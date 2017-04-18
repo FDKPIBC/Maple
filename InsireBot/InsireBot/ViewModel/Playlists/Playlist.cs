@@ -1,69 +1,164 @@
 ﻿using Maple.Core;
-using Maple.Data;
 using Maple.Localization.Properties;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel.DataAnnotations;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Data;
 using System.Windows.Input;
 
 namespace Maple
 {
-    public class Playlist : TrackingBaseViewModel<Data.Playlist>, IIsSelected, ISequence, IIdentifier
+    /// <summary>
+    ///
+    /// </summary>
+    /// <seealso cref="Maple.Core.BaseViewModel{Maple.Data.Playlist}" />
+    /// <seealso cref="Maple.Core.IIsSelected" />
+    /// <seealso cref="Maple.Core.ISequence" />
+    /// <seealso cref="Maple.Core.IIdentifier" />
+    /// <seealso cref="Maple.Core.IChangeState" />
+    [DebuggerDisplay("{Title}, {Sequence}")]
+    public class Playlist : BaseViewModel<Data.Playlist>, IIsSelected, ISequence, IIdentifier, IChangeState
     {
-        private readonly IPlaylistsRepository _playlistsRepository;
-        private readonly IMediaItemRepository _mediaItemRepository;
+        private readonly object _itemsLock;
         private readonly DialogViewModel _dialogViewModel;
-        public int ItemCount => Items?.Count ?? 0;
-
-        public ICommand LoadFromFileCommand { get; private set; }
-        public ICommand LoadFromFolderCommand { get; private set; }
-        public ICommand LoadFromUrlCommand { get; private set; }
+        public int Count => Items?.Count ?? 0;
 
         /// <summary>
-        /// contains indices of played <see cref="IMediaItem"/>
+        /// The selection changed event
         /// </summary>
+        public EventHandler SelectionChanged;
+        /// <summary>
+        /// The selection changing event
+        /// </summary>
+        public EventHandler SelectionChanging;
+
+        /// <summary>
+        /// Gets a value indicating whether this instance is new.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if this instance is new; otherwise, <c>false</c>.
+        /// </value>
+        public bool IsNew => Model.IsNew;
+        /// <summary>
+        /// Gets a value indicating whether this instance is deleted.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if this instance is deleted; otherwise, <c>false</c>.
+        /// </value>
+        public bool IsDeleted => Model.IsDeleted;
+
+        /// <summary>
+        /// Gets the load from file command.
+        /// </summary>
+        /// <value>
+        /// The load from file command.
+        /// </value>
+        public ICommand LoadFromFileCommand { get; private set; }
+        /// <summary>
+        /// Gets the load from folder command.
+        /// </summary>
+        /// <value>
+        /// The load from folder command.
+        /// </value>
+        public ICommand LoadFromFolderCommand { get; private set; }
+        /// <summary>
+        /// Gets the load from URL command.
+        /// </summary>
+        /// <value>
+        /// The load from URL command.
+        /// </value>
+        public ICommand LoadFromUrlCommand { get; private set; }
+        /// <summary>
+        /// Gets or sets the remove range command.
+        /// </summary>
+        /// <value>
+        /// The remove range command.
+        /// </value>
+        public ICommand RemoveRangeCommand { get; protected set; }
+        /// <summary>
+        /// Gets or sets the remove command.
+        /// </summary>
+        /// <value>
+        /// The remove command.
+        /// </value>
+        public ICommand RemoveCommand { get; protected set; }
+        /// <summary>
+        /// Gets or sets the clear command.
+        /// </summary>
+        /// <value>
+        /// The clear command.
+        /// </value>
+        public ICommand ClearCommand { get; protected set; }
+        /// <summary>
+        /// Gets or sets the add command.
+        /// </summary>
+        /// <value>
+        /// The add command.
+        /// </value>
+        public ICommand AddCommand { get; protected set; }
+        /// <summary>
+        /// contains indices of played <see cref="IMediaItem" />
+        /// </summary>
+        /// <value>
+        /// The history.
+        /// </value>
         public Stack<int> History { get; private set; }
 
-        public ChangeTrackingCollection<MediaItemViewModel> Items { get; private set; }
+        [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
+        public RangeObservableCollection<MediaItem> Items { get; private set; }
 
-        private MediaItemViewModel _currentItem;
+        private MediaItem _selectedItem;
         /// <summary>
-        /// is <see cref="SetActive"/> when a IMediaPlayer picks a <see cref="IMediaItem"/> from this
+        /// is <see cref="SetActive" /> when a IMediaPlayer picks a <see cref="IMediaItem" /> from this
         /// </summary>
-        public MediaItemViewModel CurrentItem
+        /// <value>
+        /// The current item.
+        /// </value>
+        public MediaItem SelectedItem
         {
-            get { return _currentItem; }
-            private set { SetValue(ref _currentItem, value); }
+            get { return _selectedItem; }
+            private set { SetValue(ref _selectedItem, value, OnChanging: () => SelectionChanging?.Raise(this), OnChanged: () => SelectionChanged?.Raise(this)); }
         }
 
         private int _sequence;
         /// <summary>
         /// the index of this item if its part of a collection
         /// </summary>
+        /// <value>
+        /// The sequence.
+        /// </value>
         public int Sequence
         {
             get { return _sequence; }
-            set { SetValue(ref _sequence, value, Changed: () => Model.Sequence = value); }
+            set { SetValue(ref _sequence, value, OnChanged: () => Model.Sequence = value); }
         }
 
         private PrivacyStatus _privacyStatus;
         /// <summary>
         /// Youtube Property
         /// </summary>
+        /// <value>
+        /// The privacy status.
+        /// </value>
         public PrivacyStatus PrivacyStatus
         {
             get { return _privacyStatus; }
-            private set { SetValue(ref _privacyStatus, value, Changed: () => Model.PrivacyStatus = (int)value); }
+            private set { SetValue(ref _privacyStatus, value, OnChanged: () => Model.PrivacyStatus = (int)value); }
         }
 
         private bool _isSelected;
         /// <summary>
         /// if this list is part of a ui bound collection and selected this should be true
         /// </summary>
+        /// <value>
+        ///   <c>true</c> if this instance is selected; otherwise, <c>false</c>.
+        /// </value>
         public bool IsSelected
         {
             get { return _isSelected; }
@@ -74,40 +169,61 @@ namespace Maple
         /// <summary>
         /// indicates whether the next item is selected randomly from the list of items on a call of Next()
         /// </summary>
+        /// <value>
+        ///   <c>true</c> if this instance is shuffeling; otherwise, <c>false</c>.
+        /// </value>
         public bool IsShuffeling
         {
             get { return _isShuffeling; }
-            set { SetValue(ref _isShuffeling, value, Changed: () => Model.IsShuffeling = value); }
+            set { SetValue(ref _isShuffeling, value, OnChanged: () => Model.IsShuffeling = value); }
         }
 
         private string _title;
         /// <summary>
         /// the title/name of this playlist (human readable identifier)
         /// </summary>
+        /// <value>
+        /// The title.
+        /// </value>
         public string Title
         {
             get { return _title; }
-            set { SetValue(ref _title, value, Changed: () => Model.Title = value); }
+            set { SetValue(ref _title, value, OnChanged: () => Model.Title = value); }
         }
 
         private string _description;
         /// <summary>
         /// the description of this playlist
         /// </summary>
+        /// <value>
+        /// The description.
+        /// </value>
         public string Description
         {
             get { return _description; }
-            set { SetValue(ref _description, value, Changed: () => Model.Description = value); }
+            set { SetValue(ref _description, value, OnChanged: () => Model.Description = value); }
         }
 
         private int _id;
+        /// <summary>
+        /// Gets the identifier.
+        /// </summary>
+        /// <value>
+        /// The identifier.
+        /// </value>
         public int Id
         {
             get { return _id; }
-            private set { SetValue(ref _id, value, Changed: () => Model.Id = value); }
+            private set { SetValue(ref _id, value, OnChanged: () => Model.Id = value); }
         }
 
         private ObservableCollection<RepeatMode> _repeatModes;
+        /// <summary>
+        /// Gets the repeat modes.
+        /// </summary>
+        /// <value>
+        /// The repeat modes.
+        /// </value>
         public ObservableCollection<RepeatMode> RepeatModes
         {
             get { return _repeatModes; }
@@ -116,56 +232,139 @@ namespace Maple
 
         private RepeatMode _repeatMode;
         /// <summary>
-        /// defines what happens when the last <see cref="IMediaItem"/> of <see cref="Items"/> is <see cref="SetActive"/> and the <see cref="Next"/> is requested
+        /// defines what happens when the last <see cref="IMediaItem" /> of <see cref="Items" /> is <see cref="SetActive" /> and the <see cref="Next" /> is requested
         /// </summary>
+        /// <value>
+        /// The repeat mode.
+        /// </value>
         public RepeatMode RepeatMode
         {
             get { return _repeatMode; }
-            set { SetValue(ref _repeatMode, value, Changed: () => Model.RepeatMode = (int)value); }
+            set { SetValue(ref _repeatMode, value, OnChanged: () => Model.RepeatMode = (int)value); }
         }
 
-        public Playlist(IPlaylistsRepository playlistRepository, IMediaItemRepository mediaItemRepository, DialogViewModel dialogViewModel, Data.Playlist model)
-            : base(model, playlistRepository)
+        private ICollectionView _view;
+        /// <summary>
+        /// For grouping, sorting and filtering
+        /// </summary>
+        /// <value>
+        /// The view.
+        /// </value>
+        public ICollectionView View
+        {
+            get { return _view; }
+            protected set { SetValue(ref _view, value); }
+        }
+
+        private string _createdBy;
+        public string CreatedBy
+        {
+            get { return _createdBy; }
+            set { SetValue(ref _createdBy, value, OnChanged: () => Model.CreatedBy = value); }
+        }
+
+        private string _updatedBy;
+        public string UpdatedBy
+        {
+            get { return _updatedBy; }
+            set { SetValue(ref _updatedBy, value, OnChanged: () => Model.UpdatedBy = value); }
+        }
+
+        private DateTime _updatedOn;
+        public DateTime UpdatedOn
+        {
+            get { return _updatedOn; }
+            set { SetValue(ref _updatedOn, value, OnChanged: () => Model.UpdatedOn = value); }
+        }
+
+        private DateTime _createdOn;
+        public DateTime CreatedOn
+        {
+            get { return _updatedOn; }
+            set { SetValue(ref _updatedOn, value, OnChanged: () => Model.CreatedOn = value); }
+        }
+
+        /// <summary>
+        /// Gets the <see cref="T"/> at the specified index.
+        /// </summary>
+        /// <value>
+        /// The <see cref="T"/>.
+        /// </value>
+        /// <param name="index">The index.</param>
+        /// <returns></returns>
+        public MediaItem this[int index]
+        {
+            get { return Items[index]; }
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Playlist" /> class.
+        /// </summary>
+        /// <param name="dialogViewModel">The dialog view model.</param>
+        /// <param name="model">The model.</param>
+        /// <exception cref="System.ArgumentNullException">dialogViewModel</exception>
+        /// <exception cref="System.ArgumentException"></exception>
+        public Playlist(DialogViewModel dialogViewModel, Data.Playlist model)
+            : base(model)
         {
             using (_busyStack.GetToken())
             {
-                _dialogViewModel = dialogViewModel;
-                _playlistsRepository = playlistRepository;
-                _mediaItemRepository = mediaItemRepository;
+                _itemsLock = new object();
+                _dialogViewModel = dialogViewModel ?? throw new ArgumentNullException(nameof(dialogViewModel));
 
-                Items = new ChangeTrackingCollection<MediaItemViewModel>();
+                Items = new RangeObservableCollection<MediaItem>();
                 RepeatModes = new ObservableCollection<RepeatMode>(Enum.GetValues(typeof(RepeatMode)).Cast<RepeatMode>().ToList());
                 History = new Stack<int>();
 
-                LoadFromFileCommand = new AsyncRelayCommand(LoadFromFile, () => CanLoadFromFile());
-                LoadFromFolderCommand = new AsyncRelayCommand(LoadFromFolder, () => CanLoadFromFolder());
-                LoadFromUrlCommand = new AsyncRelayCommand(LoadFromUrl, () => CanLoadFromUrl());
+                BindingOperations.EnableCollectionSynchronization(Items, _itemsLock);
 
-                Items.AddRange(model.MediaItems.Select(p => new MediaItemViewModel(_mediaItemRepository, p)));
-
-                Title = model.Title;
-                Description = model.Description;
-                Id = model.Id;
-                RepeatMode = (RepeatMode)model.RepeatMode;
-                IsShuffeling = model.IsShuffeling;
+                _title = model.Title;
+                _description = model.Description;
+                _id = model.Id;
+                _repeatMode = (RepeatMode)model.RepeatMode;
+                _isShuffeling = model.IsShuffeling;
+                _sequence = model.Sequence;
+                _createdBy = model.CreatedBy;
+                _createdOn = model.CreatedOn;
+                _updatedBy = model.UpdatedBy;
+                _updatedOn = model.UpdatedOn;
 
                 if (model.MediaItems == null)
                     throw new ArgumentException($"{model.MediaItems} cannot be null");
 
-                Saved += OnSaved;
+                model.MediaItems.ForEach(p => Items.Add(new MediaItem(p)));
 
                 Items.CollectionChanged += (o, e) =>
                 {
-                    OnPropertyChanged(nameof(ItemCount));
+                    OnPropertyChanged(nameof(Count));
                 };
 
-                RegisterCollection(Items, model.MediaItems);
+                View = CollectionViewSource.GetDefaultView(Items);
+                OnPropertyChanged(nameof(Count));
 
-                if (!Model.IsNew)
-                    AcceptChanges();
-
-                Validate();
+                InitializeCommands();
+                IntializeValidation();
             }
+        }
+
+        private void InitializeCommands()
+        {
+            LoadFromFileCommand = new AsyncRelayCommand(LoadFromFile, () => CanLoadFromFile());
+            LoadFromFolderCommand = new AsyncRelayCommand(LoadFromFolder, () => CanLoadFromFolder());
+            LoadFromUrlCommand = new AsyncRelayCommand(LoadFromUrl, () => CanLoadFromUrl());
+
+            RemoveCommand = new RelayCommand<MediaItem>(Remove, CanRemove);
+            RemoveRangeCommand = new RelayCommand<IList>(RemoveRange, CanRemoveRange);
+            ClearCommand = new RelayCommand(() => Clear(), CanClear);
+        }
+
+        private void IntializeValidation()
+        {
+            AddRule(Title, new NotNullOrEmptyRule(nameof(Title)));
+            AddRule(Description, new NotNullOrEmptyRule(nameof(Description)));
+            AddRule(SelectedItem, new NotNullRule(nameof(SelectedItem)));
+            AddRule(RepeatModes, new NotNullRule(nameof(RepeatModes)));
+            AddRule(Items, new NotNullRule(nameof(Items)));
         }
 
         private async Task LoadFromUrl()
@@ -173,7 +372,10 @@ namespace Maple
             using (_busyStack.GetToken())
             {
                 var items = await _dialogViewModel.ShowUrlParseDialog();
-                var result = items.Select(p => new MediaItemViewModel(_mediaItemRepository, p));
+                var result = items.Select(p => new MediaItem(p)
+                {
+                    PlaylistId = Id,
+                });
                 Items.AddRange(result);
             }
         }
@@ -187,7 +389,13 @@ namespace Maple
         {
             using (_busyStack.GetToken())
             {
-                return _dialogViewModel.ShowFolderBrowserDialog();
+                var options = new FileSystemBrowserOptions()
+                {
+                    CanCancel = true,
+                    MultiSelection = false,
+                    Title = Resources.SelectFolder,
+                };
+                return _dialogViewModel.ShowFolderBrowserDialog(options);
             }
         }
 
@@ -200,7 +408,13 @@ namespace Maple
         {
             using (_busyStack.GetToken())
             {
-                return _dialogViewModel.ShowFileBrowserDialog();
+                var options = new FileSystemBrowserOptions()
+                {
+                    CanCancel = true,
+                    MultiSelection = false,
+                    Title = Resources.SelectFiles,
+                };
+                return _dialogViewModel.ShowFileBrowserDialog(options);
             }
         }
 
@@ -213,10 +427,25 @@ namespace Maple
         {
             Items.Clear();
             History.Clear();
-            CurrentItem = null;
+            SelectedItem = null;
         }
 
-        public virtual void Add(MediaItemViewModel item)
+        /// <summary>
+        /// Determines whether this instance can clear.
+        /// </summary>
+        /// <returns>
+        ///   <c>true</c> if this instance can clear; otherwise, <c>false</c>.
+        /// </returns>
+        private bool CanClear()
+        {
+            return Items?.Any() == true;
+        }
+
+        /// <summary>
+        /// Adds the specified item.
+        /// </summary>
+        /// <param name="item">The item.</param>
+        public virtual void Add(MediaItem item)
         {
             using (_busyStack.GetToken())
             {
@@ -231,15 +460,20 @@ namespace Maple
                 item.PlaylistId = Id;
                 Items.Add(item);
 
-                if (CurrentItem == null)
-                    CurrentItem = Items.First();
+                if (SelectedItem == null)
+                    SelectedItem = Items.First();
             }
         }
 
-        public virtual void AddRange(IEnumerable<MediaItemViewModel> items)
+        /// <summary>
+        /// Adds the range.
+        /// </summary>
+        /// <param name="items">The items.</param>
+        public virtual void AddRange(IEnumerable<MediaItem> items)
         {
             using (_busyStack.GetToken())
             {
+                var added = false;
                 var currentIndex = -1;
                 if (Items.Any())
                 {
@@ -252,14 +486,20 @@ namespace Maple
                     currentIndex++;
                     item.Sequence = currentIndex;
                     Add(item);
+
+                    added = true;
                 }
 
-                if (CurrentItem == null)
-                    CurrentItem = Items.First();
+                if (SelectedItem == null && added)
+                    SelectedItem = Items.First();
             }
         }
 
-        public virtual void Remove(MediaItemViewModel item)
+        /// <summary>
+        /// Removes the specified item.
+        /// </summary>
+        /// <param name="item">The item.</param>
+        public virtual void Remove(MediaItem item)
         {
             using (_busyStack.GetToken())
             {
@@ -268,7 +508,72 @@ namespace Maple
             }
         }
 
-        public virtual MediaItemViewModel Next()
+        /// <summary>
+        /// Removes the range.
+        /// </summary>
+        /// <param name="items">The items.</param>
+        /// <exception cref="System.ArgumentNullException">items</exception>
+        public virtual void RemoveRange(IEnumerable<MediaItem> items)
+        {
+            if (items == null)
+                throw new ArgumentNullException(nameof(items));
+
+            using (_busyStack.GetToken())
+                Items.RemoveRange(items);
+        }
+
+        /// <summary>
+        /// Removes the range.
+        /// </summary>
+        /// <param name="items">The items.</param>
+        /// <exception cref="System.ArgumentNullException">items</exception>
+        public virtual void RemoveRange(IList items)
+        {
+            if (items == null)
+                throw new ArgumentNullException(nameof(items));
+
+            using (_busyStack.GetToken())
+                Items.RemoveRange(items);
+        }
+
+        /// <summary>
+        /// Determines whether this instance can remove the specified item.
+        /// </summary>
+        /// <param name="item">The item.</param>
+        /// <returns>
+        ///   <c>true</c> if this instance can remove the specified item; otherwise, <c>false</c>.
+        /// </returns>
+        public virtual bool CanRemove(MediaItem item)
+        {
+            if (Items == null || Items.Count == 0 || item as MediaItem == null)
+                return false;
+
+            return Items.Contains(item) && !IsBusy;
+        }
+
+        protected virtual bool CanRemoveRange(IEnumerable<MediaItem> items)
+        {
+            return CanClear() && items != null && items.Any(p => Items.Contains(p));
+        }
+
+        /// <summary>
+        /// Determines whether this instance [can remove range] the specified items.
+        /// </summary>
+        /// <param name="items">The items.</param>
+        /// <returns>
+        ///   <c>true</c> if this instance [can remove range] the specified items; otherwise, <c>false</c>.
+        /// </returns>
+        protected virtual bool CanRemoveRange(IList items)
+        {
+            return items == null ? false : CanRemoveRange(items.Cast<MediaItem>());
+        }
+
+        /// <summary>
+        /// Nexts this instance.
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="System.NotImplementedException">RepeatMode</exception>
+        public virtual MediaItem Next()
         {
             using (_busyStack.GetToken())
             {
@@ -295,11 +600,11 @@ namespace Maple
             }
         }
 
-        private MediaItemViewModel NextRepeatNone()
+        private MediaItem NextRepeatNone()
         {
             var currentIndex = 0;
-            if (CurrentItem?.Sequence != null)
-                currentIndex = CurrentItem?.Sequence ?? 0;
+            if (SelectedItem?.Sequence != null)
+                currentIndex = SelectedItem?.Sequence ?? 0;
 
             if (Items.Count > 1)
             {
@@ -320,19 +625,19 @@ namespace Maple
                 return NextRepeatSingle();
         }
 
-        private MediaItemViewModel NextRepeatSingle()
+        private MediaItem NextRepeatSingle()
         {
             if (RepeatMode != RepeatMode.None)
-                return CurrentItem;
+                return SelectedItem;
             else
                 return null;
         }
 
-        private MediaItemViewModel NextRepeatAll()
+        private MediaItem NextRepeatAll()
         {
             var currentIndex = 0;
-            if (CurrentItem?.Sequence != null)
-                currentIndex = CurrentItem?.Sequence ?? 0;
+            if (SelectedItem?.Sequence != null)
+                currentIndex = SelectedItem?.Sequence ?? 0;
 
             if (Items.Count > 1)
             {
@@ -357,11 +662,11 @@ namespace Maple
                 return NextRepeatSingle();
         }
 
-        private MediaItemViewModel NextShuffle()
+        private MediaItem NextShuffle()
         {
             if (Items.Count > 1)
             {
-                var nextItems = Items.Where(p => p.Sequence != CurrentItem?.Sequence); // get all items besides the current one
+                var nextItems = Items.Where(p => p.Sequence != SelectedItem?.Sequence); // get all items besides the current one
                 Items.ToList().ForEach(p => p.IsSelected = false);
                 var foundItem = nextItems.Random();
                 foundItem.IsSelected = true;
@@ -372,10 +677,12 @@ namespace Maple
         }
 
         /// <summary>
-        /// Removes the last <see cref="MediaItemViewModel"/> from <seealso cref="History"/> and returns it
+        /// Removes the last <see cref="MediaItem" /> from <seealso cref="History" /> and returns it
         /// </summary>
-        /// <returns>returns the last <see cref="MediaItemViewModel"/> from <seealso cref="History"/></returns>
-        public virtual MediaItemViewModel Previous()
+        /// <returns>
+        /// returns the last <see cref="MediaItem" /> from <seealso cref="History" />
+        /// </returns>
+        public virtual MediaItem Previous()
         {
             using (_busyStack.GetToken())
             {
@@ -386,7 +693,7 @@ namespace Maple
                     {
                         var previous = History.Pop();
 
-                        if (previous == CurrentItem?.Sequence) // the most recent item in the history, is the just played item, so we wanna skip that
+                        if (previous == SelectedItem?.Sequence) // the most recent item in the history, is the just played item, so we wanna skip that
                             continue;
 
                         if (previous > -1)
@@ -408,32 +715,26 @@ namespace Maple
             }
         }
 
+        /// <summary>
+        /// Determines whether this instance can next.
+        /// </summary>
+        /// <returns>
+        ///   <c>true</c> if this instance can next; otherwise, <c>false</c>.
+        /// </returns>
         public bool CanNext()
         {
             return Items != null && Items.Any();
         }
 
+        /// <summary>
+        /// Determines whether this instance can previous.
+        /// </summary>
+        /// <returns>
+        ///   <c>true</c> if this instance can previous; otherwise, <c>false</c>.
+        /// </returns>
         public bool CanPrevious()
         {
             return History != null && History.Any();
-        }
-
-        public override IEnumerable<ValidationResult> Validate(ValidationContext context)
-        {
-            if (string.IsNullOrWhiteSpace(Title))
-                yield return new ValidationResult($"{nameof(Title)} {Resources.IsRequired}", new[] { nameof(Title) });
-        }
-
-        public void OnSaved(object sender, EventArgs e)
-        {
-            foreach (var item in Items)
-            {
-                if (item.PlaylistId != Id)
-                {
-                    item.PlaylistId = Id;
-                    item.Save();
-                }
-            }
         }
     }
 }

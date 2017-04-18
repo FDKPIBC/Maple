@@ -79,6 +79,15 @@ namespace Maple.Localization.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Anwendung wird gestartet.
+        /// </summary>
+        public static string AppStart {
+            get {
+                return ResourceManager.GetString("AppStart", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Wiedergabegerät.
         /// </summary>
         public static string AudioDevice {
@@ -228,6 +237,15 @@ namespace Maple.Localization.Properties {
         public static string Languages {
             get {
                 return ResourceManager.GetString("Languages", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Lade.
+        /// </summary>
+        public static string Loading {
+            get {
+                return ResourceManager.GetString("Loading", resourceCulture);
             }
         }
         
@@ -385,6 +403,15 @@ namespace Maple.Localization.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Aktuelle Wiedergabeliste.
+        /// </summary>
+        public static string PlaylistCurrent {
+            get {
+                return ResourceManager.GetString("PlaylistCurrent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Wiedergabelisten.
         /// </summary>
         public static string Playlists {
@@ -448,11 +475,38 @@ namespace Maple.Localization.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Speichere.
+        /// </summary>
+        public static string Saving {
+            get {
+                return ResourceManager.GetString("Saving", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Änderungen werden gespeichert.
         /// </summary>
         public static string SavingState {
             get {
                 return ResourceManager.GetString("SavingState", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Dateiauswahl.
+        /// </summary>
+        public static string SelectFiles {
+            get {
+                return ResourceManager.GetString("SelectFiles", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Ordnerauswahl.
+        /// </summary>
+        public static string SelectFolder {
+            get {
+                return ResourceManager.GetString("SelectFolder", resourceCulture);
             }
         }
         

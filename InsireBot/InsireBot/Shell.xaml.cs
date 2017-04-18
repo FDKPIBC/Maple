@@ -1,17 +1,24 @@
-﻿using System.Windows.Input;
+﻿using Maple.Core;
+using System;
+using System.Windows.Input;
 
 namespace Maple
 {
     public partial class Shell : IoCWindow
     {
-        public Shell(ITranslationManager manager, UIColorsViewModel vm) : base(manager, vm)
+        private readonly ShellViewModel _datacontext;
+
+        public Shell(ITranslationService manager, IUIColorsViewModel vm, ShellViewModel datacontext) : base(manager, vm)
         {
+            DataContext = datacontext ?? throw new ArgumentNullException(nameof(datacontext));
+            _datacontext = datacontext;
+
             InitializeComponent();
         }
 
         private void UIElement_OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            MenuToggleButton.IsChecked = false;
+            _datacontext.Scenes.IsExpanded = false;
         }
     }
 }

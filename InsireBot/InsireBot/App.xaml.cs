@@ -1,11 +1,10 @@
 ﻿using DryIoc;
 using Maple.Core;
-using Maple.Data;
 using Maple.Properties;
-using Maple.Youtube;
 using System;
-using System.IO;
+using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace Maple
@@ -13,24 +12,39 @@ namespace Maple
     public partial class App : Application
     {
         private IContainer _container;
-        private ITranslationManager _manager;
+        private ITranslationService _manager;
+        private IMapleLog _log;
 
-        protected override void OnStartup(StartupEventArgs e)
+        protected override async void OnStartup(StartupEventArgs e)
         {
-            InitializeLocalization();
-            InitializeIocContainer();
             InitializeResources();
+            InitializeLocalization();
+
+            _container = DependencyInjectionFactory.Get();
+
+            using (var vm = _container.Resolve<ISplashScreenViewModel>())
+            {
+                _manager = _container.Resolve<ITranslationService>();
+                _log = _container.Resolve<IMapleLog>();
+
+                var shell = new Shell(_manager, _container.Resolve<IUIColorsViewModel>(), _container.Resolve<ShellViewModel>());
+                var screen = new SplashScreen(_manager, _container.Resolve<IUIColorsViewModel>(), vm);
+                screen.Show();
+
+                await Task.WhenAll(LoadApplicationData());
+
+                shell.Loaded += (o, args) =>
+                {
+                    screen.Close();
+                };
+
+                _log.Info(Localization.Properties.Resources.AppStart);
+                await Task.Delay(TimeSpan.FromSeconds(1));
+
+                shell.Show();
+            }
 
             base.OnStartup(e);
-
-            var colorsViewModel = _container.Resolve<UIColorsViewModel>();
-            var shell = new Shell(_manager, colorsViewModel)
-            {
-                DataContext = _container.Resolve<ShellViewModel>(),
-            };
-
-            colorsViewModel.ApplyColorsFromSettings();
-            shell.Show();
         }
 
         protected override void OnExit(ExitEventArgs e)
@@ -41,15 +55,23 @@ namespace Maple
 
         private void InitializeResources()
         {
-            var styles = new IoCResourceDictionary(_manager)
-            {
-                Source = new Uri("/Maple;component/Resources/Style.xaml", UriKind.RelativeOrAbsolute),                
-            };
-            // injecting the translation manager into a shared resourcedictionary,
-            // so that hopefully all usages of the translation extension can be resolved inside of ResourceDictionaries
-            styles.Add(typeof(ITranslationManager).Name, _manager);
+            var styles = CreateResourceDictionary(new Uri("/Maple;component/Resources/Style.xaml", UriKind.RelativeOrAbsolute));
 
             Resources.MergedDictionaries.Add(styles);
+        }
+
+        private IoCResourceDictionary CreateResourceDictionary(Uri uri)
+        {
+            // injecting the translation manager into a shared resourcedictionary,
+            // so that hopefully all usages of the translation extension can be resolved inside of ResourceDictionaries
+
+            var dic = new IoCResourceDictionary(_manager)
+            {
+                Source = uri,
+            };
+            dic.Add(typeof(ITranslationService).Name, _manager);
+
+            return dic;
         }
 
         private void InitializeLocalization()
@@ -57,50 +79,23 @@ namespace Maple
             Thread.CurrentThread.CurrentCulture = Settings.Default.StartUpCulture;
         }
 
-        private void InitializeIocContainer()
+        private IList<Task> LoadApplicationData()
         {
-            var connection = new DBConnection(new DirectoryInfo(".").FullName);
-            _container = new Container(rules => rules.WithoutThrowOnRegisteringDisposableTransient());
+            var tasks = new List<Task>();
 
-            _container.RegisterInstance(connection);
+            foreach (var item in _container.Resolve<IEnumerable<ILoadableViewModel>>())
+                tasks.Add(item.LoadAsync());
 
-            _container.Register<IBotLog, LoggingService>(reuse: Reuse.Singleton);
-            _container.Register<IYoutubeUrlParseService, UrlParseService>();
-            _container.Register<Scenes>(reuse: Reuse.Singleton);
-            _container.Register<UIColorsViewModel>(reuse: Reuse.Singleton);
-
-            _container.Register<Playlists>(reuse: Reuse.Singleton);
-            _container.Register<MediaPlayers>(reuse: Reuse.Singleton);
-            _container.Register<ShellViewModel>(reuse: Reuse.Singleton);
-            _container.Register<DialogViewModel>(reuse: Reuse.Singleton);
-            _container.Register<OptionsViewModel>(reuse: Reuse.Singleton);
-            _container.Register<DirectorViewModel>(reuse: Reuse.Singleton);
-            _container.Register<StatusbarViewModel>(reuse: Reuse.Singleton);
-
-            _container.Register<UrlParseService>();
-
-            _container.Register<ITranslationProvider, ResxTranslationProvider>(reuse: Reuse.Singleton);
-            _container.Register<ITranslationManager, TranslationManager>(reuse: Reuse.Singleton);
-            _container.Register<IMediaPlayer, NAudioMediaPlayer>(reuse: Reuse.Transient);
-
-            _container.Register<IMediaItemMapper, MediaItemMapper>();
-            _container.Register<IPlaylistMapper, PlaylistMapper>();
-
-            _container.Register<IPlaylistsRepository, PlaylistsRepository>(reuse: Reuse.Singleton);
-            _container.Register<IMediaItemRepository, MediaItemRepository>(reuse: Reuse.Singleton);
-            _container.Register<IMediaPlayerRepository, MediaPlayerRepository>(reuse: Reuse.Singleton);
-
-            _manager = _container.Resolve<ITranslationManager>();
+            return tasks;
         }
 
         private void SaveState()
         {
-            var log = _container.Resolve<IBotLog>();
+            var log = _container.Resolve<IMapleLog>();
             log.Info(Localization.Properties.Resources.SavingState);
 
-            _container.Resolve<Playlists>().Save();
-            _container.Resolve<MediaPlayers>().Save();
-            _manager.Save();
+            foreach (var item in _container.Resolve<IEnumerable<ILoadableViewModel>>())
+                item.Save();
 
             log.Info(Localization.Properties.Resources.SavedState);
         }

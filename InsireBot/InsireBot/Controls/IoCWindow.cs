@@ -1,4 +1,6 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Maple.Core;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,24 +9,45 @@ using System.Windows.Media.Imaging;
 
 namespace Maple
 {
+    /// <summary>
+    ///
+    /// </summary>
+    /// <seealso cref="Maple.ConfigurableWindow" />
+    /// <seealso cref="Maple.Core.IIocFrameworkElement" />
     public class IoCWindow : ConfigurableWindow, IIocFrameworkElement
     {
         private IConfigurableWindowSettings _settings;
-        private UIColorsViewModel _colorsViewModel;
-        public ITranslationManager TranslationManager { get; private set; }
+        private IUIColorsViewModel _colorsViewModel;
+        public ITranslationService TranslationManager { get; private set; }
 
-        public IoCWindow() : base()
+        /// <summary>
+        /// Initializes a new instance of the <see cref="IoCWindow"/> class.
+        /// </summary>
+        public IoCWindow()
+            : base()
         {
-            Assert.Fail($"The constructor without parameters of {nameof(IoCWindow)} exists only for compatibility reasons.");
+            if (Debugger.IsAttached)
+                Assert.Fail($"The constructor without parameters of {nameof(IoCWindow)} exists only for compatibility reasons.");
         }
 
-        public IoCWindow(ITranslationManager container, UIColorsViewModel vm) : base()
+        /// <summary>
+        /// Initializes a new instance of the <see cref="IoCWindow"/> class.
+        /// </summary>
+        /// <param name="container">The container.</param>
+        /// <param name="vm">The vm.</param>
+        public IoCWindow(ITranslationService container, IUIColorsViewModel vm) : base()
         {
             TranslationManager = container;
             _colorsViewModel = vm;
             _colorsViewModel.PrimaryColorChanged += PrimaryColorChanged;
         }
 
+        /// <summary>
+        /// Derived classes must return the object which exposes
+        /// persisted window settings. This method is only invoked
+        /// once per Window, during construction.
+        /// </summary>
+        /// <returns></returns>
         protected override IConfigurableWindowSettings CreateSettings()
         {
             return _settings = _settings ?? new ShellSettings(this);
@@ -40,6 +63,12 @@ namespace Maple
             }
         }
 
+        /// <summary>
+        /// Sets the image.
+        /// </summary>
+        /// <param name="geo">The geo.</param>
+        /// <param name="color">The color.</param>
+        /// <returns></returns>
         private BitmapSource SetImage(Geometry geo, Color color)
         {
             var canvas = new Canvas

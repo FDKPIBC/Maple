@@ -21,8 +21,8 @@ namespace Maple.Youtube
         private const string _playListBaseUrl = @"https://www.youtube.com/playlist?list=";
 
         private YouTubeService _service;
-        private readonly IBotLog _log;
-        public Service(IBotLog log)
+        private readonly IMapleLog _log;
+        public Service(IMapleLog log)
         {
             _log = log;
         }
@@ -65,9 +65,9 @@ namespace Maple.Youtube
             }
         }
 
-        public async Task<List<Data.Playlist>> GetPlaylists(string playlistId)
+        public async Task<List<Core.Playlist>> GetPlaylists(string playlistId)
         {
-            var result = new List<Data.Playlist>();
+            var result = new List<Core.Playlist>();
             var youtubeService = await GetService();
 
             var request = youtubeService.Playlists.List("snippet,contentDetails");
@@ -80,7 +80,7 @@ namespace Maple.Youtube
                 var nextPageToken = "";
                 while (nextPageToken != null)
                 {
-                    var playlist = new Data.Playlist
+                    var playlist = new Core.Playlist
                     {
                         Title = item.Snippet.Title,
                         Location = $"{_playListBaseUrl}{item.Id}",
@@ -96,28 +96,35 @@ namespace Maple.Youtube
             return result;
         }
 
-        public async Task CreatePlaylist(Data.Playlist playlist, bool publicPlaylist = true)
+        public async Task CreatePlaylist(Core.Playlist playlist, bool publicPlaylist = true)
         {
             var youtubeService = await GetService();
 
-            var newPlaylist = new Google.Apis.YouTube.v3.Data.Playlist();
-            newPlaylist.Snippet = new PlaylistSnippet();
-            newPlaylist.Snippet.Title = playlist.Title;
-            newPlaylist.Snippet.Description = playlist.Description;
-            newPlaylist.Status = new PlaylistStatus
+            var newPlaylist = new Google.Apis.YouTube.v3.Data.Playlist()
             {
-                PrivacyStatus = publicPlaylist == true ? "public" : "private"
+                Snippet = new PlaylistSnippet()
+                {
+                    Title = playlist.Title,
+                    Description = playlist.Description
+                },
+                Status = new PlaylistStatus
+                {
+                    PrivacyStatus = publicPlaylist == true ? "public" : "private"
+                }
             };
-
             newPlaylist = await youtubeService.Playlists.Insert(newPlaylist, "snippet,status").ExecuteAsync();
 
             foreach (var item in playlist.MediaItems)
             {
                 // Add a video to the newly created playlist.
-                var newVideo = new PlaylistItem();
-                newVideo.Snippet = new PlaylistItemSnippet();
-                newVideo.Snippet.PlaylistId = newPlaylist.Id;
-                newVideo.Snippet.ResourceId = new ResourceId();
+                var newVideo = new PlaylistItem()
+                {
+                    Snippet = new PlaylistItemSnippet()
+                    {
+                        PlaylistId = newPlaylist.Id,
+                        ResourceId = new ResourceId()
+                    }
+                };
                 newVideo.Snippet.ResourceId.Kind = "youtube#video";
                 newVideo.Snippet.ResourceId.VideoId = GetVideoId(item);
                 newVideo = await youtubeService.PlaylistItems.Insert(newVideo, "snippet").ExecuteAsync();
@@ -192,9 +199,9 @@ namespace Maple.Youtube
 
         //TODO writing a async sync method for what i get from youtube vs that i generate myself as playlist
 
-        public async Task<IList<Data.MediaItem>> GetVideo(string videoId)
+        public async Task<IList<Core.MediaItem>> GetVideo(string videoId)
         {
-            var result = new List<Data.MediaItem>();
+            var result = new List<Core.MediaItem>();
             var youtubeService = await GetService();
 
             var request = youtubeService.Videos.List("snippet,contentDetails");
@@ -207,7 +214,7 @@ namespace Maple.Youtube
                 var nextPageToken = "";
                 while (nextPageToken != null)
                 {
-                    var video = new Data.MediaItem
+                    var video = new Core.MediaItem
                     {
                         Title = item.Snippet.Title,
                         Location = $"{_videoBaseUrl}{videoId}",

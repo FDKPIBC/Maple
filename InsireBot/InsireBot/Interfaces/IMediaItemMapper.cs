@@ -1,17 +1,50 @@
 ﻿namespace Maple
 {
+    /// <summary>
+    /// 
+    /// </summary>
     public interface IMediaItemMapper
     {
-        Core.MediaItem GetCore(MediaItemViewModel mediaitem);
+        /// <summary>
+        /// Gets the core.
+        /// </summary>
+        /// <param name="mediaitem">The mediaitem.</param>
+        /// <returns></returns>
+        Core.MediaItem GetCore(MediaItem mediaitem);
 
+        /// <summary>
+        /// Gets the core.
+        /// </summary>
+        /// <param name="mediaitem">The mediaitem.</param>
+        /// <returns></returns>
         Core.MediaItem GetCore(Data.MediaItem mediaitem);
 
+        /// <summary>
+        /// Gets the data.
+        /// </summary>
+        /// <param name="mediaitem">The mediaitem.</param>
+        /// <returns></returns>
         Data.MediaItem GetData(Core.MediaItem mediaitem);
 
-        Data.MediaItem GetData(MediaItemViewModel mediaitem);
+        /// <summary>
+        /// Gets the data.
+        /// </summary>
+        /// <param name="mediaitem">The mediaitem.</param>
+        /// <returns></returns>
+        Data.MediaItem GetData(MediaItem mediaitem);
 
-        MediaItemViewModel Get(Data.MediaItem mediaitem);
+        /// <summary>
+        /// Gets the specified mediaitem.
+        /// </summary>
+        /// <param name="mediaitem">The mediaitem.</param>
+        /// <returns></returns>
+        MediaItem Get(Data.MediaItem mediaitem);
 
-        MediaItemViewModel Get(Core.MediaItem mediaitem);
+        /// <summary>
+        /// Gets the specified mediaitem.
+        /// </summary>
+        /// <param name="mediaitem">The mediaitem.</param>
+        /// <returns></returns>
+        MediaItem Get(Core.MediaItem mediaitem);
     }
 }

@@ -6,126 +6,164 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace Maple.Core
 {
+    /// <summary>
+    ///
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <seealso cref="System.Collections.ObjectModel.ObservableCollection{T}" />
+    /// <seealso cref="System.ComponentModel.INotifyPropertyChanged" />
     public class RangeObservableCollection<T> : ObservableCollection<T>, INotifyPropertyChanged
     {
-        private SynchronizationContext _synchronizationContext = SynchronizationContext.Current;
+        private bool _suppressNotification;
+        private readonly BusyStack _busyStack;
 
-        private bool _suppressNotification = false;
-
-        public RangeObservableCollection() : base()
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RangeObservableCollection{T}"/> class.
+        /// </summary>
+        public RangeObservableCollection()
+            : base()
         {
+            _busyStack = new BusyStack();
+            _busyStack.OnChanged += (updatePending) => _suppressNotification = updatePending;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RangeObservableCollection{T}"/> class.
+        /// </summary>
+        /// <param name="items">The items.</param>
         public RangeObservableCollection(IEnumerable<T> items) : this()
         {
             AddRange(items);
         }
 
+        /// <summary>
+        /// Raises the <see cref="E:System.Collections.ObjectModel.ObservableCollection`1.CollectionChanged" /> event with the provided arguments.
+        /// </summary>
+        /// <param name="e">Arguments of the event being raised.</param>
         protected override void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
         {
             if (!_suppressNotification)
-                if (SynchronizationContext.Current == _synchronizationContext)
-                {
-                    // Execute the CollectionChanged event on the current thread
-                    RaiseCollectionChanged(e);
-                }
-                else
-                {
-                    // Raises the CollectionChanged event on the creator thread
-                    _synchronizationContext.Send(RaiseCollectionChanged, e);
-                }
+                RaiseCollectionChanged(e);
         }
 
-        private void RaiseCollectionChanged(object param)
+        /// <summary>
+        /// Raises the collection changed.
+        /// </summary>
+        /// <param name="param">The <see cref="NotifyCollectionChangedEventArgs"/> instance containing the event data.</param>
+        private void RaiseCollectionChanged(NotifyCollectionChangedEventArgs param)
         {
-            // We are in the creator thread, call the base implementation directly
-            base.OnCollectionChanged((NotifyCollectionChangedEventArgs)param);
+            base.OnCollectionChanged(param);
         }
 
+        /// <summary>
+        /// Adds the range.
+        /// </summary>
+        /// <param name="items">The items.</param>
+        public virtual void AddRange(List<T> items)
+        {
+            AddRange(items.AsEnumerable());
+        }
+
+        /// <summary>
+        /// Adds the range.
+        /// </summary>
+        /// <param name="items">The items.</param>
+        /// <exception cref="System.ArgumentNullException">items</exception>
         public virtual void AddRange(IEnumerable<T> items)
         {
             if (items == null)
                 throw new ArgumentNullException(nameof(items));
 
-            _suppressNotification = true;
-
-            foreach (var item in items)
-                Add(item);
-
-            _suppressNotification = false;
+            using (_busyStack.GetToken())
+            {
+                foreach (var item in items)
+                    Add(item);
+            }
 
             OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
 
+        /// <summary>
+        /// Removes the range.
+        /// </summary>
+        /// <param name="items">The items.</param>
+        /// <exception cref="System.ArgumentNullException">items</exception>
         public virtual void RemoveRange(IEnumerable<T> items)
         {
             if (items == null)
                 throw new ArgumentNullException(nameof(items));
 
-            _suppressNotification = true;
+            using (_busyStack.GetToken())
+            {
+                foreach (var item in items)
+                    Remove(item);
+            }
 
-            foreach (var item in items)
-                Remove(item);
-
-            _suppressNotification = false;
             OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
 
+        /// <summary>
+        /// Removes the range.
+        /// </summary>
+        /// <param name="items">The items.</param>
+        /// <exception cref="System.ArgumentNullException">items</exception>
         public virtual void RemoveRange(IList items)
         {
             if (items == null)
                 throw new ArgumentNullException(nameof(items));
 
-            _suppressNotification = true;
+            using (_busyStack.GetToken())
+            {
+                foreach (var item in items.Cast<T>())
+                    Remove(item);
+            }
 
-            foreach (var item in items.Cast<T>())
-                Remove(item);
-
-            _suppressNotification = false;
             OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
 
+        /// <summary>
+        /// Removes the range.
+        /// </summary>
+        /// <param name="items">The items.</param>
+        /// <exception cref="System.ArgumentNullException">items</exception>
         public virtual void RemoveRange(IList<T> items)
         {
             if (items == null)
                 throw new ArgumentNullException(nameof(items));
 
-            _suppressNotification = true;
+            using (_busyStack.GetToken())
+            {
+                foreach (var item in items)
+                    Remove(item);
+            }
 
-            foreach (var item in items)
-                Remove(item);
-
-            _suppressNotification = false;
             OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
         }
 
+        /// <summary>
+        /// Called when [property changed].
+        /// </summary>
+        /// <param name="propertyName">Name of the property.</param>
         public void OnPropertyChanged([CallerMemberName]string propertyName = null)
         {
             OnPropertyChanged(new PropertyChangedEventArgs(propertyName));
         }
 
+        /// <summary>
+        /// Raises the <see cref="E:System.Collections.ObjectModel.ObservableCollection`1.PropertyChanged" /> event with the provided arguments.
+        /// </summary>
+        /// <param name="e">Arguments of the event being raised.</param>
         protected override void OnPropertyChanged(PropertyChangedEventArgs e)
         {
-            if (SynchronizationContext.Current == _synchronizationContext)
-            {
-                // Execute the PropertyChanged event on the current thread
-                RaisePropertyChanged(e);
-            }
-            else
-            {
-                // Raises the PropertyChanged event on the creator thread
-                _synchronizationContext.Send(RaisePropertyChanged, e);
-            }
+            RaisePropertyChanged(e);
         }
 
-        private void RaisePropertyChanged(object param)
+        private void RaisePropertyChanged(PropertyChangedEventArgs param)
         {
-            // We are in the creator thread, call the base implementation directly
-            base.OnPropertyChanged((PropertyChangedEventArgs)param);
+            base.OnPropertyChanged(param);
         }
     }
 }

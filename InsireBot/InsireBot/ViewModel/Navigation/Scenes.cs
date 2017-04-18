@@ -1,6 +1,5 @@
 ﻿using Maple.Core;
 using Maple.Localization.Properties;
-using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
@@ -11,26 +10,52 @@ namespace Maple
     /// <summary>
     /// ViewModel that stores and controls which UserControl(Page/View) whatever is displayed in the mainwindow of this app)
     /// </summary>
-    public class Scenes : ViewModelListBase<Scene>
+    /// <seealso cref="Maple.Core.BaseListViewModel{Maple.Scene}" />
+    public class Scenes : BaseListViewModel<Scene>
     {
-        private ITranslationManager _manager;
-        private IBotLog _log;
+        private readonly ITranslationService _manager;
+        private readonly IMapleLog _log;
+
+        private bool _isExpanded;
+        public bool IsExpanded
+        {
+            get { return _isExpanded; }
+            set { SetValue(ref _isExpanded, value); }
+        }
+
+        public ICommand CloseExpanderCommand { get; private set; }
+
+        /// <summary>
+        /// Gets the open color options command.
+        /// </summary>
+        /// <value>
+        /// The open color options command.
+        /// </value>
         public ICommand OpenColorOptionsCommand { get; private set; }
+        /// <summary>
+        /// Gets the open media player command.
+        /// </summary>
+        /// <value>
+        /// The open media player command.
+        /// </value>
         public ICommand OpenMediaPlayerCommand { get; private set; }
+        /// <summary>
+        /// Gets the open github page command.
+        /// </summary>
+        /// <value>
+        /// The open github page command.
+        /// </value>
         public ICommand OpenGithubPageCommand { get; private set; }
 
-        public Scenes(ITranslationManager manager,
-                        IBotLog log,
-                        DirectorViewModel directorViewModel,
-                        MediaPlayers mediaPlayersViewModel,
-                        Playlists playlistsViewModel,
-                        UIColorsViewModel uIColorsViewModel,
-                        OptionsViewModel optionsViewModel)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Scenes"/> class.
+        /// </summary>
+        /// <param name="manager">The manager.</param>
+        /// <param name="log">The log.</param>
+        public Scenes(ITranslationService manager, IMapleLog log)
         {
             _manager = manager;
             _log = log;
-
-            _log.Info(_manager.Translate(nameof(Resources.NavigationLoad)));
 
             var content = new[]
             {
@@ -38,7 +63,6 @@ namespace Maple
                 {
                     Content = new MediaPlayerPage(_manager),
                     Key = nameof(Resources.Playback),
-                    GetDataContext = () => mediaPlayersViewModel.Items.First(p => p is MainMediaPlayer),
                     IsSelected = true,
                     Sequence = 100,
                 },
@@ -47,7 +71,6 @@ namespace Maple
                 {
                     Content = new PlaylistsPage(_manager),
                     Key = nameof(Resources.Playlists),
-                    GetDataContext = () => playlistsViewModel,
                     IsSelected = false,
                     Sequence = 300,
                 },
@@ -56,7 +79,6 @@ namespace Maple
                 {
                     Content = new ColorOptionsPage(_manager),
                     Key = nameof(Resources.Themes),
-                    GetDataContext = () => uIColorsViewModel,
                     IsSelected = false,
                     Sequence = 500,
                 },
@@ -65,7 +87,6 @@ namespace Maple
                 {
                     Content = new OptionsPage(_manager),
                     Key = nameof(Resources.Options),
-                    GetDataContext = () => optionsViewModel,
                     IsSelected = false,
                     Sequence = 600,
                 },
@@ -74,7 +95,6 @@ namespace Maple
                 {
                     Content = new MediaPlayersPage(_manager),
                     Key = nameof(Resources.Director),
-                    GetDataContext = () => directorViewModel,
                     IsSelected = false,
                     Sequence = 150,
                 },
@@ -84,6 +104,8 @@ namespace Maple
             {
                 AddRange(content);
 
+                SelectedItem = Items[0];
+
                 using (View.DeferRefresh())
                 {
                     View.SortDescriptions.Add(new SortDescription(nameof(Scene.Sequence), ListSortDirection.Ascending));
@@ -91,10 +113,6 @@ namespace Maple
             }
 
             InitializeCommands();
-
-            SelectionChanging += SelectedSceneChanging;
-
-            _log.Info(manager.Translate(nameof(Resources.NavigationLoaded)));
         }
 
         private void InitializeCommands()
@@ -102,14 +120,7 @@ namespace Maple
             OpenColorOptionsCommand = new RelayCommand(OpenColorOptionsView, CanOpenColorOptionsView);
             OpenMediaPlayerCommand = new RelayCommand(OpenMediaPlayerView, CanOpenMediaPlayerView);
             OpenGithubPageCommand = new RelayCommand(OpenGithubPage);
-        }
-
-        private void SelectedSceneChanging(object sender, EventArgs e)
-        {
-            var viewmodel = sender as ISaveable;
-
-            if (viewmodel != null)
-                viewmodel.Save();
+            CloseExpanderCommand = new RelayCommand(() => IsExpanded = false, () => IsExpanded != false);
         }
 
         private void OpenColorOptionsView()

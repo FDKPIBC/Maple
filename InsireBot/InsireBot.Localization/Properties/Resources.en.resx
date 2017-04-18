@@ -273,4 +273,22 @@
   <data name="YoutubeLoaded" xml:space="preserve">
     <value>Loaded youtube service</value>
   </data>
+  <data name="PlaylistCurrent" xml:space="preserve">
+    <value>Current playlist</value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Loading</value>
+  </data>
+  <data name="Saving" xml:space="preserve">
+    <value>Saving</value>
+  </data>
+  <data name="SelectFolder" xml:space="preserve">
+    <value>Folder selection</value>
+  </data>
+  <data name="SelectFiles" xml:space="preserve">
+    <value>File selection</value>
+  </data>
+  <data name="AppStart" xml:space="preserve">
+    <value>Application is being started</value>
+  </data>
 </root>

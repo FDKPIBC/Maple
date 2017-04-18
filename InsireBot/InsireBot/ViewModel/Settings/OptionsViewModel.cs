@@ -1,25 +1,83 @@
 ﻿using Maple.Core;
+using Maple.Localization.Properties;
+using System;
 using System.Globalization;
+using System.Threading.Tasks;
+using System.Windows.Input;
 
 namespace Maple
 {
-    public class OptionsViewModel : ObservableObject, ISaveable
+    /// <summary>
+    ///
+    /// </summary>
+    /// <seealso cref="Maple.Core.ObservableObject" />
+    /// <seealso cref="Maple.Core.ILoadableViewModel" />
+    /// <seealso cref="Maple.Core.ISaveableViewModel" />
+    public class OptionsViewModel : ObservableObject, IOptionsViewModel
     {
-        private ITranslationManager _manager;
-        public RangeObservableCollection<CultureInfo> Items { get; private set; }
+        private readonly ITranslationService _manager;
+        private readonly IMapleLog _log;
+
+        private RangeObservableCollection<CultureInfo> _items;
+        /// <summary>
+        /// Gets or sets the items.
+        /// </summary>
+        /// <value>
+        /// The items.
+        /// </value>
+        public RangeObservableCollection<CultureInfo> Items
+        {
+            get { return _items; }
+            set { SetValue(ref _items, value); }
+        }
 
         private CultureInfo _selectedCulture;
+        /// <summary>
+        /// Gets or sets the selected culture.
+        /// </summary>
+        /// <value>
+        /// The selected culture.
+        /// </value>
         public CultureInfo SelectedCulture
         {
             get { return _selectedCulture; }
-            set { SetValue(ref _selectedCulture, value, Changed: SyncCulture); }
+            set { SetValue(ref _selectedCulture, value, OnChanged: SyncCulture); }
         }
 
-        public OptionsViewModel(ITranslationManager manager)
+        public bool IsLoaded { get; private set; }
+
+        /// <summary>
+        /// Gets the refresh command.
+        /// </summary>
+        /// <value>
+        /// The refresh command.
+        /// </value>
+        public ICommand RefreshCommand => new RelayCommand(Load);
+        /// <summary>
+        /// Gets the load command.
+        /// </summary>
+        /// <value>
+        /// The load command.
+        /// </value>
+        public ICommand LoadCommand => new RelayCommand(Load, () => !IsLoaded);
+        /// <summary>
+        /// Gets the save command.
+        /// </summary>
+        /// <value>
+        /// The save command.
+        /// </value>
+        public ICommand SaveCommand => new RelayCommand(Save);
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OptionsViewModel"/> class.
+        /// </summary>
+        /// <param name="manager">The manager.</param>
+        public OptionsViewModel(ITranslationService manager, IMapleLog log)
         {
-            _manager = manager;
+            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _manager = manager ?? throw new ArgumentNullException(nameof(log));
+
             Items = new RangeObservableCollection<CultureInfo>(_manager.Languages);
-            SelectedCulture = Properties.Settings.Default.StartUpCulture;
         }
 
         private void SyncCulture()
@@ -27,9 +85,38 @@ namespace Maple
             _manager.CurrentLanguage = SelectedCulture;
         }
 
+        /// <summary>
+        /// Saves this instance.
+        /// </summary>
         public void Save()
         {
+            _log.Info($"{Resources.Saving} {Resources.Options}");
             _manager.Save();
+        }
+
+        /// <summary>
+        /// Loads this instance.
+        /// </summary>
+        public void Load()
+        {
+            _log.Info($"{Resources.Loading} {Resources.Options}");
+            _manager.Load();
+            SelectedCulture = Properties.Settings.Default.StartUpCulture;
+            IsLoaded = true;
+        }
+
+        public async Task SaveAsync()
+        {
+            _log.Info($"{Resources.Saving} {Resources.Options}");
+            await _manager.SaveAsync();
+        }
+
+        public async Task LoadAsync()
+        {
+            _log.Info($"{Resources.Loading} {Resources.Options}");
+            await _manager.LoadAsync();
+            SelectedCulture = Properties.Settings.Default.StartUpCulture;
+            IsLoaded = true;
         }
     }
 }
