@@ -16,10 +16,13 @@
     <!--  DataContext ShellViewModel  -->
     <metro:MetroWindow.RightWindowCommands>
         <metro:WindowCommands ShowSeparators="False">
-            <Button Command="{Binding Scenes.OpenColorOptionsCommand}">
+            <Button Command="{Binding Scenes.OpenOptionsCommand}" ToolTip="{local:Translation OptionsCommand}">
+                <icons:PackIconMaterial Kind="Earth" />
+            </Button>
+            <Button Command="{Binding Scenes.OpenColorOptionsCommand}" ToolTip="{local:Translation ColorOptionsCommand}">
                 <icons:PackIconMaterial Kind="Brush" />
             </Button>
-            <Button Command="{Binding Scenes.OpenMediaPlayerCommand}">
+            <Button Command="{Binding Scenes.OpenMediaPlayerCommand}" ToolTip="{local:Translation MediaPlayerCommand}">
                 <icons:PackIconMaterial Kind="Play" />
             </Button>
         </metro:WindowCommands>
@@ -27,7 +30,7 @@
 
     <metro:MetroWindow.LeftWindowCommands>
         <metro:WindowCommands>
-            <Button Command="{Binding Scenes.OpenGithubPageCommand}">
+            <Button Command="{Binding Scenes.OpenGithubPageCommand}" ToolTip="{local:Translation GithubPageCommand}">
                 <icons:PackIconMaterial Kind="GithubCircle" />
             </Button>
         </metro:WindowCommands>
@@ -41,15 +44,28 @@
                                   DataContext="{Binding StatusbarViewModel}"
                                   DockPanel.Dock="Bottom"
                                   Mode="PrimaryMid">
-            <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
-                <TextBlock>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="5"/>
+                    <ColumnDefinition />
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition />
+                    <ColumnDefinition Width="5"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="1">
                     <Run Text="{Binding Version, Mode=OneWay}" />
                     <Run Text="{Binding Language, Mode=OneWay}" />
                 </TextBlock>
-                <TextBlock Margin="5 0" Text="{local:Translation PlaylistCurrent}" />
-                <TextBlock Text="{Binding MainMediaPlayer.Playlist.Title, UpdateSourceTrigger=PropertyChanged}" />
-                <TextBlock Margin="5 0" Text="{Binding MainMediaPlayer.Playlist.SelectedItem.Title, UpdateSourceTrigger=PropertyChanged}" />
-            </StackPanel>
+
+                <TextBlock Grid.Column="3">
+                    <Run Text="{Binding MainMediaPlayer.Playlist.Title, Mode=OneWay}" />
+                    <Run Text="-"/>
+                    <Run Text="{Binding MainMediaPlayer.Playlist.SelectedItem.Title, Mode=OneWay}" />
+                </TextBlock>
+            </Grid>
         </materialDesign:ColorZone>
 
         <!--  DataContext ShellViewModel  -->
@@ -57,16 +73,22 @@
                                    Identifier="RootDialog"
                                    IsOpen="{Binding Data.IsOpen, Source={StaticResource DialogProxy}}">
             <materialDesign:DialogHost.DialogContent>
-                <DockPanel DataContext="{Binding Data, Source={StaticResource DialogProxy}}">
+                <DockPanel DataContext="{Binding Data, Source={StaticResource DialogProxy}}"
+                           Height="506"
+                           Width="900"
+                           MaxHeight="506"
+                           MaxWidth="900">
                     <materialDesign:ColorZone Padding="4"
                                               DockPanel.Dock="Top"
                                               Mode="PrimaryMid">
                         <DockPanel LastChildFill="False">
-                            <TextBlock DockPanel.Dock="Left"
+                            <TextBlock DockPanel.Dock="Left" Margin="8,0,0,0"
                                        FontWeight="Medium"
-                                       Text="{Binding Title}"
                                        TextTrimming="CharacterEllipsis"
-                                       TextWrapping="NoWrap" />
+                                       TextWrapping="NoWrap" >
+                                <Run Text="{Binding Title, Mode=OneWay}"/>
+                                <Run Text="{Binding TitleDetail, Mode=OneWay}"/>
+                            </TextBlock>
                             <Button Command="{Binding CloseDialogCommand}"
                                     DockPanel.Dock="Right"
                                     Style="{StaticResource MaterialDesignToolForegroundButton}"
@@ -84,7 +106,7 @@
                                     Orientation="Horizontal">
                             <Button Command="{Binding AcceptDialogCommand}"
                                     Content="{local:Translation Accept}"
-                                    ToolTip="{local:Translation Accept}" />
+                                    ToolTip="{local:Translation Accept}" Margin="0,0,8,0"/>
                             <Button Command="{Binding CancelDialogCommand}"
                                     Content="{local:Translation Cancel}"
                                     ToolTip="{local:Translation Cancel}"

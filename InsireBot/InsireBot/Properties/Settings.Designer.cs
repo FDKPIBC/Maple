@@ -73,18 +73,6 @@ namespace Maple.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("en")]
-        public global::System.Globalization.CultureInfo StartUpCulture {
-            get {
-                return ((global::System.Globalization.CultureInfo)(this["StartUpCulture"]));
-            }
-            set {
-                this["StartUpCulture"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string SwatchName {
             get {

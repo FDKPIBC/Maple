@@ -8,10 +8,10 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Maple.Localization.Properties {
-    using System;
-    
-    
+namespace Maple.Localization.Properties
+{
+
+
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -124,6 +124,15 @@ namespace Maple.Localization.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Zu den Farbprofilen wechseln.
+        /// </summary>
+        public static string ColorOptionsCommand {
+            get {
+                return ResourceManager.GetString("ColorOptionsCommand", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Anzahl.
         /// </summary>
         public static string Count {
@@ -187,6 +196,24 @@ namespace Maple.Localization.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Ändern.
+        /// </summary>
+        public static string Edit {
+            get {
+                return ResourceManager.GetString("Edit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Sprache ändern.
+        /// </summary>
+        public static string EditLanguage {
+            get {
+                return ResourceManager.GetString("EditLanguage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Eine Wiedergabeliste aus einer Datei importieren.
         /// </summary>
         public static string FilePlaylistImport {
@@ -196,11 +223,29 @@ namespace Maple.Localization.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Filter.
+        /// </summary>
+        public static string Filter {
+            get {
+                return ResourceManager.GetString("Filter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Eine Wiedergabeliste anhand eines Ordners aus dem Dateisystem generieren und importieren.
         /// </summary>
         public static string FolderPlaylistImport {
             get {
                 return ResourceManager.GetString("FolderPlaylistImport", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Projektseite auf GitHub.com öffnen.
+        /// </summary>
+        public static string GithubPageCommand {
+            get {
+                return ResourceManager.GetString("GithubPageCommand", resourceCulture);
             }
         }
         
@@ -277,6 +322,42 @@ namespace Maple.Localization.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Wiedergabetitel.
+        /// </summary>
+        public static string MediaItem {
+            get {
+                return ResourceManager.GetString("MediaItem", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Wiedergabetitel.
+        /// </summary>
+        public static string MediaItems {
+            get {
+                return ResourceManager.GetString("MediaItems", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Zur Wiedergabeliste wechseln.
+        /// </summary>
+        public static string MediaPlayerCommand {
+            get {
+                return ResourceManager.GetString("MediaPlayerCommand", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mediaplayers.
+        /// </summary>
+        public static string MediaPlayers {
+            get {
+                return ResourceManager.GetString("MediaPlayers", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Navigation wird geladen.
         /// </summary>
         public static string NavigationLoad {
@@ -318,6 +399,15 @@ namespace Maple.Localization.Properties {
         public static string Options {
             get {
                 return ResourceManager.GetString("Options", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Zu den Einstellungen wechseln.
+        /// </summary>
+        public static string OptionsCommand {
+            get {
+                return ResourceManager.GetString("OptionsCommand", resourceCulture);
             }
         }
         
@@ -520,7 +610,7 @@ namespace Maple.Localization.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Themen.
+        ///   Looks up a localized string similar to Farbprofile.
         /// </summary>
         public static string Themes {
             get {

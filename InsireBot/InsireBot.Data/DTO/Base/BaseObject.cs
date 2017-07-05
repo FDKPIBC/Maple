@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Maple.Data
@@ -13,6 +14,9 @@ namespace Maple.Data
 
         public DateTime UpdatedOn { get; set; }
         public string UpdatedBy { get; set; }
+
+        [Timestamp]
+        public byte[] RowVersion { get; set; }
 
         [NotMapped]
         public bool IsNew => Id == 0;

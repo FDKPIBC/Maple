@@ -13,14 +13,15 @@ namespace Maple.Core
     /// <summary>
     /// ListViewModel implementation for ObservableObjects unrelated to the DataAccessLayer (DB)
     /// </summary>
-    /// <typeparam name="T">a class implementing <see cref="ObservableObject" /></typeparam>
+    /// <typeparam name="TViewModel">a class implementing <see cref="ObservableObject" /></typeparam>
     /// <seealso cref="Maple.Core.ObservableObject" />
-    public abstract class BaseListViewModel<T> : ObservableObject where T : INotifyPropertyChanged
+    public abstract class BaseListViewModel<TViewModel> : BaseViewModel<TViewModel>
+        where TViewModel : INotifyPropertyChanged
     {
         /// <summary>
         /// The items lock
         /// </summary>
-        protected object _itemsLock;
+        protected readonly object _itemsLock;
 
         /// <summary>
         /// The selection changed event
@@ -31,46 +32,19 @@ namespace Maple.Core
         /// </summary>
         public EventHandler SelectionChanging;
 
-        private bool _isBusy;
-        /// <summary>
-        /// Indicates if there is an operation running.
-        /// Modified by adding <see cref="BusyToken" /> to the <see cref="BusyStack" /> property
-        /// </summary>
-        /// <value>
-        ///   <c>true</c> if this instance is busy; otherwise, <c>false</c>.
-        /// </value>
-        public bool IsBusy
-        {
-            get { return _isBusy; }
-            private set { SetValue(ref _isBusy, value); }
-        }
-
-        private BusyStack _busyStack;
-        /// <summary>
-        /// Provides IDisposable tokens for running async operations
-        /// </summary>
-        /// <value>
-        /// The busy stack.
-        /// </value>
-        protected BusyStack BusyStack
-        {
-            get { return _busyStack; }
-            private set { SetValue(ref _busyStack, value); }
-        }
-
-        private T _selectedItem;
+        private TViewModel _selectedItem;
         /// <summary>
         /// Gets or sets the selected item.
         /// </summary>
         /// <value>
         /// The selected item.
         /// </value>
-        public virtual T SelectedItem
+        public virtual TViewModel SelectedItem
         {
             get { return _selectedItem; }
             set
             {
-                if (EqualityComparer<T>.Default.Equals(_selectedItem, value))
+                if (EqualityComparer<TViewModel>.Default.Equals(_selectedItem, value))
                     return;
 
                 SelectionChanging?.Raise(this);
@@ -81,12 +55,12 @@ namespace Maple.Core
             }
         }
 
-        private RangeObservableCollection<T> _items;
+        private RangeObservableCollection<TViewModel> _items;
         /// <summary>
         /// Contains all the UI relevant Models and notifies about changes in the collection and inside the Models themself
         /// </summary>
         [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
-        public RangeObservableCollection<T> Items
+        public RangeObservableCollection<TViewModel> Items
         {
             get { return _items; }
             private set { SetValue(ref _items, value); }
@@ -102,7 +76,7 @@ namespace Maple.Core
         public ICollectionView View
         {
             get { return _view; }
-            protected set { SetValue(ref _view, value); }
+            private set { SetValue(ref _view, value); }
         }
 
         /// <summary>
@@ -113,14 +87,14 @@ namespace Maple.Core
         /// </value>
         public int Count => Items?.Count ?? 0;
         /// <summary>
-        /// Gets the <see cref="T"/> at the specified index.
+        /// Gets the <see cref="TViewModel"/> at the specified index.
         /// </summary>
         /// <value>
-        /// The <see cref="T"/>.
+        /// The <see cref="TViewModel"/>.
         /// </value>
         /// <param name="index">The index.</param>
         /// <returns></returns>
-        public T this[int index]
+        public TViewModel this[int index]
         {
             get { return Items[index]; }
         }
@@ -131,21 +105,21 @@ namespace Maple.Core
         /// <value>
         /// The remove range command.
         /// </value>
-        public ICommand RemoveRangeCommand { get; protected set; }
+        public ICommand RemoveRangeCommand { get; private set; }
         /// <summary>
         /// Gets or sets the remove command.
         /// </summary>
         /// <value>
         /// The remove command.
         /// </value>
-        public ICommand RemoveCommand { get; protected set; }
+        public ICommand RemoveCommand { get; private set; }
         /// <summary>
         /// Gets or sets the clear command.
         /// </summary>
         /// <value>
         /// The clear command.
         /// </value>
-        public ICommand ClearCommand { get; protected set; }
+        public ICommand ClearCommand { get; private set; }
         /// <summary>
         /// Gets or sets the add command.
         /// </summary>
@@ -158,8 +132,19 @@ namespace Maple.Core
         /// Initializes a new instance of the <see cref="BaseListViewModel{T}"/> class.
         /// </summary>
         public BaseListViewModel()
+            : base()
         {
-            InitializeProperties();
+            _itemsLock = new object();
+
+
+            Items = new RangeObservableCollection<TViewModel>();
+            Items.CollectionChanged += ItemsCollectionChanged;
+
+            View = CollectionViewSource.GetDefaultView(Items);
+
+            // initial Notification, so that UI recognizes the value
+            OnPropertyChanged(nameof(Count));
+
             InitializeCommands();
 
             BindingOperations.EnableCollectionSynchronization(Items, _itemsLock);
@@ -169,7 +154,8 @@ namespace Maple.Core
         /// Initializes a new instance of the <see cref="BaseListViewModel{T}"/> class.
         /// </summary>
         /// <param name="items">The items.</param>
-        public BaseListViewModel(IList<T> items) : this()
+        public BaseListViewModel(IList<TViewModel> items)
+            : this()
         {
             Items.AddRange(items);
         }
@@ -178,32 +164,15 @@ namespace Maple.Core
         /// Initializes a new instance of the <see cref="BaseListViewModel{T}"/> class.
         /// </summary>
         /// <param name="items">The items.</param>
-        public BaseListViewModel(IEnumerable<T> items) : this()
+        public BaseListViewModel(IEnumerable<TViewModel> items)
+            : this()
         {
             Items.AddRange(items);
         }
 
-        private void InitializeProperties()
-        {
-            _itemsLock = new object();
-
-            Items = new RangeObservableCollection<T>();
-            Items.CollectionChanged += ItemsCollectionChanged;
-
-            BusyStack = new BusyStack()
-            {
-                OnChanged = (hasItems) => IsBusy = hasItems
-            };
-
-            View = CollectionViewSource.GetDefaultView(Items);
-
-            // initial Notification, so that UI recognizes the value
-            OnPropertyChanged(nameof(Count));
-        }
-
         private void InitializeCommands()
         {
-            RemoveCommand = new RelayCommand<T>(Remove, CanRemove);
+            RemoveCommand = new RelayCommand<TViewModel>(Remove, CanRemove);
             RemoveRangeCommand = new RelayCommand<IList>(RemoveRange, CanRemoveRange);
             ClearCommand = new RelayCommand(() => Clear(), CanClear);
         }
@@ -218,12 +187,12 @@ namespace Maple.Core
         /// </summary>
         /// <param name="item">The item.</param>
         /// <exception cref="System.ArgumentNullException">item</exception>
-        public virtual void Add(T item)
+        public virtual void Add(TViewModel item)
         {
             if (item == null)
                 throw new ArgumentNullException(nameof(item));
 
-            using (BusyStack.GetToken())
+            using (_busyStack.GetToken())
                 Items.Add(item);
         }
 
@@ -232,12 +201,12 @@ namespace Maple.Core
         /// </summary>
         /// <param name="items">The items.</param>
         /// <exception cref="System.ArgumentNullException">items</exception>
-        public virtual void AddRange(IEnumerable<T> items)
+        public virtual void AddRange(IEnumerable<TViewModel> items)
         {
             if (items == null)
                 throw new ArgumentNullException(nameof(items));
 
-            using (BusyStack.GetToken())
+            using (_busyStack.GetToken())
                 Items.AddRange(items);
         }
 
@@ -247,18 +216,18 @@ namespace Maple.Core
         /// <returns>
         ///   <c>true</c> if this instance can add; otherwise, <c>false</c>.
         /// </returns>
-        protected virtual bool CanAdd()
+        protected virtual bool CanAdd(TViewModel item)
         {
-            return Items != null;
+            return Items != null && item != null;
         }
 
         /// <summary>
         /// Removes the specified item.
         /// </summary>
         /// <param name="item">The item.</param>
-        public virtual void Remove(T item)
+        public virtual void Remove(TViewModel item)
         {
-            using (BusyStack.GetToken())
+            using (_busyStack.GetToken())
                 Items.Remove(item);
         }
 
@@ -267,12 +236,12 @@ namespace Maple.Core
         /// </summary>
         /// <param name="items">The items.</param>
         /// <exception cref="System.ArgumentNullException">items</exception>
-        public virtual void RemoveRange(IEnumerable<T> items)
+        public virtual void RemoveRange(IEnumerable<TViewModel> items)
         {
             if (items == null)
                 throw new ArgumentNullException(nameof(items));
 
-            using (BusyStack.GetToken())
+            using (_busyStack.GetToken())
                 Items.RemoveRange(items);
         }
 
@@ -286,7 +255,7 @@ namespace Maple.Core
             if (items == null)
                 throw new ArgumentNullException(nameof(items));
 
-            using (BusyStack.GetToken())
+            using (_busyStack.GetToken())
                 Items.RemoveRange(items);
         }
 
@@ -297,7 +266,7 @@ namespace Maple.Core
         /// <returns>
         ///   <c>true</c> if this instance can remove the specified item; otherwise, <c>false</c>.
         /// </returns>
-        protected virtual bool CanRemove(T item)
+        public virtual bool CanRemove(TViewModel item)
         {
             return CanClear() && item != null && Items.Contains(item);
         }
@@ -309,7 +278,7 @@ namespace Maple.Core
         /// <returns>
         ///   <c>true</c> if this instance [can remove range] the specified items; otherwise, <c>false</c>.
         /// </returns>
-        protected virtual bool CanRemoveRange(IEnumerable<T> items)
+        public virtual bool CanRemoveRange(IEnumerable<TViewModel> items)
         {
             return CanClear() && items != null && items.Any(p => Items.Contains(p));
         }
@@ -321,9 +290,9 @@ namespace Maple.Core
         /// <returns>
         ///   <c>true</c> if this instance [can remove range] the specified items; otherwise, <c>false</c>.
         /// </returns>
-        protected virtual bool CanRemoveRange(IList items)
+        public virtual bool CanRemoveRange(IList items)
         {
-            return items == null ? false : CanRemoveRange(items.Cast<T>());
+            return items == null ? false : CanRemoveRange(items.Cast<TViewModel>());
         }
 
         /// <summary>
@@ -331,7 +300,9 @@ namespace Maple.Core
         /// </summary>
         public virtual void Clear()
         {
-            using (BusyStack.GetToken())
+            SelectedItem = default(TViewModel);
+
+            using (_busyStack.GetToken())
                 Items.Clear();
         }
 
@@ -341,9 +312,9 @@ namespace Maple.Core
         /// <returns>
         ///   <c>true</c> if this instance can clear; otherwise, <c>false</c>.
         /// </returns>
-        protected virtual bool CanClear()
+        public virtual bool CanClear()
         {
-            return Items?.Any() == true;
+            return Items?.Count > 0 && !IsBusy;
         }
     }
 }

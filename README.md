@@ -1,26 +1,29 @@
 ![logo](header.png)
 
-[![Build status](https://ci.appveyor.com/api/projects/status/2bgiexw53ktd5lhp?svg=true)](https://ci.appveyor.com/project/Insire/insirebot-v2)
+[![Build status](https://ci.appveyor.com/api/projects/status/mil447tc6xjo163u?svg=true)](https://ci.appveyor.com/project/Insire/maple)
+[![License](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/Insire/Maple/blob/master/license.md)
+[![.NET Framework](https://img.shields.io/badge/.NET%20Framework-4.6.2-orange.svg)](https://www.microsoft.com/net)
+
 
 This is a rewrite of the original InsireBot. Which was planned to be a tool for semi and non professional livestreamers to provide music to them selfs and to their audience with high configureability.
 
-After a long hiatus, I'm continuing my rewrite and try to improve on my previously written code.
+After a long hiatus, I'm continuing my rewrite and try to improve on my previously written code. You can see a "live" preview [here](https://github.com/Insire/Maple/blob/master/InsireBot/Resources/Images/2017-04-22-23-26-20.gif). I also often refer to this project when explaining concepts to colleagues at work or during discussions in the [C# Discord Server](https://discord.gg/VCFhEDy).
 
 ![Mainwindow](MainWindow.gif)
 
 ## Compile Requirements:
  - Visual Studio 2017 Community Edition or better
- - .NET Framework 4.5.2, C# 7
- - Windows 7 or better
+ - .NET Framework 4.6.2, C# 7
+ - Windows 10 (lower versions may run down till Windows 7)
 
 ## Features
 - AudioPlayback
 - AudioDeviceSelection
-- PlaylistManagement
-- UI ThemeConfiguration
-- Localization (German, English ...)
+- PlaylistManagement for local audio files and audio from youtube
+- Colorprofile Configuration, can be changed during runtime
+- Localization (German, English ...), can be changed during runtime
 
-## Libraries used
+## Dependencies
 - [MaterialDesignInXamlToolkit](https://github.com/ButchersBoy/MaterialDesignInXamlToolkit) - UI Library
 - [MahApps.Metro](https://github.com/MahApps/MahApps.Metro) - UI Library
 - [MahApps.Metro.IconPacks](https://github.com/MahApps/MahApps.Metro.IconPacks) - UI Library
@@ -33,6 +36,26 @@ After a long hiatus, I'm continuing my rewrite and try to improve on my previous
 - [EntityFramework](https://github.com/aspnet/EntityFramework6) - ORM mapper
 - [Newtonsoft.Json](https://github.com/JamesNK/Newtonsoft.Json) - JSON framework 
 - [DryIoc](https://bitbucket.org/dadhi/dryioc) - IoC container
+- [Fluent Validation](https://github.com/JeremySkinner/FluentValidation) - Validation
+
+## Useful Patterns, Concepts you may find here aswell
+- Repository pattern
+- MVVM pattern
+- Dependency Injection
+- Inversion of Control
+- Composition Root
+- various base implementations for INotifyPropertyChanged
+- various implementations of ICommand (inspired by MVVMLight)
+- how to setup MaterialDesignInXamlToolkit with MahApps.Metro
+- how to change the Colorprofile for MaterialDesignInXamlToolkit and MahApps.Metro during runtime
+- how to change your TaskbarIcon during runtime in a WPF app
+- how to change the Localization of a WPF app during runtime
+- how to save and load WPF WindowLocations
+- how to use Googles Youtube API
+- async Dialogs
+- WPF Dialogs for File- and Folderbrowsing
+- Unit Tests (very work in progress)
+
 
 ## MIT License
 Copyright (c) 2017 
@@ -56,5 +79,5 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ## Credits
-- Application Icon - by vngnc aka [Keno Böhme](http://www.kenoboeh.me/)
+- Application Icon - by vngnc aka [Keno BÃ¶hme](http://www.kenoboeh.me/)
 - General Feedback - [C# Discord Server](https://discord.gg/VCFhEDy)

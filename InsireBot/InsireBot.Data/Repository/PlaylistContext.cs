@@ -2,28 +2,29 @@
 
 namespace Maple.Data
 {
-    public class PlaylistContext : DbContext
+    public class PlaylistContext : DbContext, IPlaylistContext
     {
         public DbSet<Playlist> Playlists { get; set; }
         public DbSet<MediaItem> MediaItems { get; set; }
         public DbSet<MediaPlayer> Mediaplayers { get; set; }
+        public DbSet<Option> Options { get; set; }
+        public DbSet<Raw> Data { get; set; }
 
         public PlaylistContext()
             : base("Main")
         {
+            Configuration.ProxyCreationEnabled = true;
+            Configuration.LazyLoadingEnabled = true;
         }
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
             Database.SetInitializer(new CreateSeedDatabaseIfNotExists<PlaylistContext>(modelBuilder));
+        }
 
-            //modelBuilder.Entity<MediaItem>()
-            //    .HasRequired(p => p.Playlist)
-            //    .WithMany(p => p.MediaItems)
-            //    .WillCascadeOnDelete(true);
-
-            //modelBuilder.Entity<MediaPlayer>()
-            //    .HasRequired(p => p.Playlist);
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
         }
     }
 }
